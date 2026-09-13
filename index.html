@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مزرعتي | تطبيق إدارة المزارع الذكي</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { cairo: ['Cairo', 'sans-serif'] },
+      colors: {
+        night: '#0a1f14',
+        pine: '#0f2e1d',
+        moss: '#14402a',
+      }
+    }
+  }
+}
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Cairo', sans-serif; overflow-x: hidden; }
+  ::selection { background: #10b981; color: #fff; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #f0f5f1; }
+  ::-webkit-scrollbar-thumb { background: #10b981aa; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #059669; }
+
+  /* Reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1); }
+  .reveal.revealed { opacity: 1; transform: none; }
+
+  /* Float animation */
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+  .float-anim { animation: float 5.5s ease-in-out infinite; }
+  .float-anim-slow { animation: float 7s ease-in-out infinite; }
+
+  /* Phone */
+  .phone { width: 300px; border-radius: 2.8rem; border: 8px solid #0c1f15; background: #0c1f15; box-shadow: 0 40px 80px -20px rgba(6,40,22,.55), 0 0 0 1px rgba(255,255,255,.08); overflow: hidden; position: relative; }
+  .phone-screen { background: linear-gradient(170deg, #0f2e1d 0%, #0a1f14 60%, #0c2519 100%); height: 600px; overflow: hidden; position: relative; }
+  .notch { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 90px; height: 20px; background: #0c1f15; border-radius: 999px; z-index: 20; }
+
+  @keyframes blink { 0%,100% {opacity:1} 50% {opacity:.25} }
+  .blink { animation: blink 1.6s ease-in-out infinite; }
+
+  /* Tabs */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeUp .45s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  /* Accordion */
+  .acc-body { max-height: 0; overflow: hidden; transition: max-height .5s cubic-bezier(.22,1,.36,1); }
+  .acc-item.open .acc-body { max-height: 480px; }
+  .acc-item.open .acc-chevron { transform: rotate(180deg); }
+  .acc-chevron { transition: transform .35s ease; }
+
+  /* Price flash */
+  @keyframes flashUp { 0% { background: rgba(16,185,129,.35); } 100% { background: transparent; } }
+  @keyframes flashDown { 0% { background: rgba(244,63,94,.3); } 100% { background: transparent; } }
+  .flash-up { animation: flashUp 1.4s ease; }
+  .flash-down { animation: flashDown 1.4s ease; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 120px); transition: transform .45s cubic-bezier(.22,1,.36,1); z-index: 100; }
+  #toast.show { transform: translate(-50%, 0); }
+
+  /* Marquee ticker */
+  @keyframes tickerMove { from { transform: translateX(0); } to { transform: translateX(50%); } }
+  .ticker-track { animation: tickerMove 32s linear infinite; }
+  .ticker-track:hover { animation-play-state: paused; }
+
+  /* Gradient text */
+  .grad-text { background: linear-gradient(120deg, #6ee7b7, #34d399, #a3e635); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* Hero glow blobs */
+  .blob { position: absolute; border-radius: 9999px; filter: blur(90px); opacity: .35; pointer-events: none; }
+
+  /* Custom checkbox */
+  .task-check { transition: all .25s ease; }
+  .task-item.done .task-check { background: #10b981; border-color: #10b981; }
+  .task-item.done .task-title { text-decoration: line-through; opacity: .5; }
+
+  input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* Ring transition */
+  #progressRing { transition: stroke-dashoffset .6s cubic-bezier(.22,1,.36,1), stroke .3s ease; }
+
+  /* Nav mobile menu */
+  #mobileMenu { max-height: 0; overflow: hidden; transition: max-height .45s ease; }
+  #mobileMenu.open { max-height: 420px; }
+
+  .glass { background: rgba(255,255,255,.08); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,.14); }
+  .glass-light { background: rgba(255,255,255,.75); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.9); }
+
+  @keyframes shine { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
+  .shine { background: linear-gradient(120deg, #34d399 25%, #a7f3d0 50%, #34d399 75%); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 4s linear infinite; }
+
+  .dot-active { width: 24px !important; background: #059669 !important; }
+</style>
+</head>
+<body class="bg-[#f6faf7] text-gray-800 antialiased">
+
+<!-- ================= NAVBAR ================= -->
+<header id="navbar" class="fixed top-0 inset-x-0 z-50 transition-all duration-300">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <nav class="flex items-center justify-between h-16 lg:h-[72px]">
+      <a href="#home" class="flex items-center gap-2.5 group">
+        <span class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-600/30 group-hover:scale-105 transition-transform">
+          <i data-lucide="sprout" class="w-5 h-5 text-white"></i>
+        </span>
+        <span class="text-2xl font-black text-white" id="logoText">مزرعتي</span>
+      </a>
+      <div class="hidden lg:flex items-center gap-7 text-sm font-semibold" id="navLinks">
+        <a href="#home" class="nav-link text-white/90 hover:text-emerald-300 transition">الرئيسية</a>
+        <a href="#features" class="nav-link text-white/90 hover:text-emerald-300 transition">المميزات</a>
+        <a href="#demo" class="nav-link text-white/90 hover:text-emerald-300 transition">تجربة حية</a>
+        <a href="#diseases" class="nav-link text-white/90 hover:text-emerald-300 transition">الأمراض والآفات</a>
+        <a href="#audience" class="nav-link text-white/90 hover:text-emerald-300 transition">لمن التطبيق؟</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="#download" class="hidden sm:inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold px-5 py-2.5 rounded-full shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 transition-all">
+          <i data-lucide="smartphone" class="w-4 h-4"></i>
+          حمّل التطبيق
+        </a>
+        <button id="menuBtn" class="lg:hidden w-10 h-10 rounded-xl glass flex items-center justify-center text-white">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </nav>
+  </div>
+  <div id="mobileMenu" class="lg:hidden bg-white/95 backdrop-blur-xl border-t border-gray-100 shadow-xl">
+    <div class="px-6 py-4 flex flex-col gap-1 text-sm font-semibold text-gray-700">
+      <a href="#home" class="mob-link py-3 border-b border-gray-100 flex items-center gap-3"><i data-lucide="home" class="w-4 h-4 text-emerald-600"></i>الرئيسية</a>
+      <a href="#features" class="mob-link py-3 border-b border-gray-100 flex items-center gap-3"><i data-lucide="star" class="w-4 h-4 text-emerald-600"></i>المميزات</a>
+      <a href="#demo" class="mob-link py-3 border-b border-gray-100 flex items-center gap-3"><i data-lucide="flask-conical" class="w-4 h-4 text-emerald-600"></i>تجربة حية</a>
+      <a href="#diseases" class="mob-link py-3 border-b border-gray-100 flex items-center gap-3"><i data-lucide="bug" class="w-4 h-4 text-emerald-600"></i>الأمراض والآفات</a>
+      <a href="#audience" class="mob-link py-3 border-b border-gray-100 flex items-center gap-3"><i data-lucide="users" class="w-4 h-4 text-emerald-600"></i>لمن التطبيق؟</a>
+      <a href="#download" class="mob-link mt-3 bg-emerald-600 text-white text-center py-3 rounded-xl font-bold">حمّل التطبيق مجاناً</a>
+    </div>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section id="home" class="relative min-h-screen flex items-center pt-28 pb-16 overflow-hidden bg-gradient-to-b from-[#0a1f14] via-[#0f2e1d] to-[#0a1f14]">
+  <div class="blob w-[500px] h-[500px] bg-emerald-500 -top-32 -right-32"></div>
+  <div class="blob w-[400px] h-[400px] bg-lime-500 bottom-0 -left-32 opacity-20"></div>
+  <div class="absolute inset-0 opacity-[0.04]" style="background-image: radial-gradient(circle at 1px 1px, #fff 1px, transparent 0); background-size: 34px 34px;"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-14 items-center relative z-10 w-full">
+    <!-- Text -->
+    <div class="text-center lg:text-right">
+      <div class="inline-flex items-center gap-2 glass text-emerald-200 text-xs font-bold px-4 py-2 rounded-full mb-6 reveal">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 blink"></span>
+        الإصدار الجديد متوفر الآن — مع تنبيهات ذكية للمهام
+      </div>
+      <h1 class="text-4xl sm:text-5xl xl:text-6xl font-black leading-[1.25] text-white reveal" style="transition-delay:.1s">
+        أدر مزرعتك <span class="shine">بذكاء</span><br>
+        من مكان واحد
+      </h1>
+      <p class="mt-6 text-lg text-emerald-100/70 leading-relaxed max-w-xl mx-auto lg:mx-0 reveal" style="transition-delay:.2s">
+        "مزرعتي" تجمع تنظيم قطع الأرض والمحاصيل، مواعيد الري والتسميد والحصاد، وإدارة المصروفات والأرباح في تطبيق واحد سهل — لتتخذ قرارات أفضل مبنية على بيانات مزرعتك الحقيقية.
+      </p>
+      <div class="mt-8 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start reveal" style="transition-delay:.3s">
+        <a href="#download" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-8 py-4 rounded-2xl shadow-xl shadow-emerald-500/30 hover:-translate-y-1 transition-all">
+          <i data-lucide="download" class="w-5 h-5"></i>
+          ابدأ مجاناً الآن
+        </a>
+        <a href="#demo" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 glass hover:bg-white/15 text-white font-bold px-8 py-4 rounded-2xl transition-all hover:-translate-y-1">
+          <i data-lucide="play" class="w-5 h-5 text-emerald-300"></i>
+          جرّب التطبيق مباشرة
+        </a>
+      </div>
+      <div class="mt-10 flex items-center gap-4 justify-center lg:justify-start reveal" style="transition-delay:.4s">
+        <div class="flex -space-x-3 space-x-reverse">
+          <span class="w-11 h-11 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 border-2 border-[#0f2e1d] flex items-center justify-center text-lg">👨‍🌾</span>
+          <span class="w-11 h-11 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 border-2 border-[#0f2e1d] flex items-center justify-center text-lg">👩‍🌾</span>
+          <span class="w-11 h-11 rounded-full bg-gradient-to-br from-lime-400 to-emerald-600 border-2 border-[#0f2e1d] flex items-center justify-center text-lg">🧑‍🔬</span>
+          <span class="w-11 h-11 rounded-full bg-emerald-900 border-2 border-[#0f2e1d] flex items-center justify-center text-xs font-bold text-emerald-300">+5K</span>
+        </div>
+        <div class="text-right">
+          <div class="flex items-center gap-1 text-amber-400">
+            <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+            <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+            <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+            <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+            <i data-lucide="star" class="w-4 h-4 fill-current"></i>
+            <span class="text-white font-bold text-sm mr-1">4.9</span>
+          </div>
+          <p class="text-emerald-100/60 text-xs font-medium">يثق به أكثر من 5,000 مزارع ومهندس زراعي</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phone mockup -->
+    <div class="flex justify-center relative reveal" style="transition-delay:.25s">
+      <div class="relative">
+        <div class="phone float-anim">
+          <div class="notch"></div>
+          <div class="phone-screen pt-12 px-4 pb-3 flex flex-col">
+            <!-- App header -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center"><i data-lucide="sprout" class="w-4 h-4 text-white"></i></span>
+                <span class="text-white font-extrabold text-sm">مزرعتي</span>
+              </div>
+              <div class="relative">
+                <i data-lucide="bell" class="w-5 h-5 text-emerald-200"></i>
+                <span class="absolute -top-1 -left-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-[#0f2e1d]"></span>
+              </div>
+            </div>
+            <!-- Greeting -->
+            <div class="mt-4">
+              <p class="text-emerald-100/60 text-[11px]">الأحد، صباح الخير 🌤️</p>
+              <h3 class="text-white font-bold text-base">مزرعة أحمد — الفيوم</h3>
+            </div>
+            <!-- Weather -->
+            <div class="mt-3 glass rounded-2xl p-3 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i data-lucide="sun" class="w-7 h-7 text-amber-400"></i>
+                <div>
+                  <p class="text-white font-bold text-sm">28° مشمس</p>
+                  <p class="text-emerald-100/50 text-[10px]">رطوبة 45% · رياح 12 كم/س</p>
+                </div>
+              </div>
+              <span class="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-2.5 py-1 rounded-full">يوم مناسب للرش</span>
+            </div>
+            <!-- Stats -->
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <div class="bg-white/5 border border-white/10 rounded-xl p-2.5">
+                <p class="text-emerald-300 text-[10px] font-semibold">قطع الأرض</p>
+                <p class="text-white font-black text-lg">12</p>
+              </div>
+              <div class="bg-white/5 border border-white/10 rounded-xl p-2.5">
+                <p class="text-emerald-300 text-[10px] font-semibold">عدد الأشجار</p>
+                <p class="text-white font-black text-lg">3,450</p>
+              </div>
+              <div class="bg-white/5 border border-white/10 rounded-xl p-2.5">
+                <p class="text-emerald-300 text-[10px] font-semibold">مهام اليوم</p>
+                <p class="text-white font-black text-lg">4</p>
+              </div>
+              <div class="bg-emerald-500/15 border border-emerald-400/30 rounded-xl p-2.5">
+                <p class="text-emerald-300 text-[10px] font-semibold">ربح الشهر</p>
+                <p class="text-emerald-300 font-black text-lg">12.5K+</p>
+              </div>
+            </div>
+            <!-- Tasks -->
+            <p class="mt-4 text-white text-xs font-bold mb-2 flex items-center gap-1.5"><i data-lucide="calendar-check" class="w-3.5 h-3.5 text-emerald-400"></i> مهام اليوم</p>
+            <div class="space-y-2 flex-1">
+              <div class="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-xl p-2.5">
+                <span class="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center"><i data-lucide="droplets" class="w-4 h-4 text-sky-400"></i></span>
+                <div class="flex-1">
+                  <p class="text-white text-[11px] font-bold">ري أشجار التين</p>
+                  <p class="text-emerald-100/40 text-[9px]">قطعة الشمال · 6:00 م</p>
+                </div>
+                <span class="text-[9px] bg-red-500/20 text-red-300 font-bold px-2 py-0.5 rounded-full">متأخر</span>
+              </div>
+              <div class="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-xl p-2.5">
+                <span class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center"><i data-lucide="flask-conical" class="w-4 h-4 text-amber-400"></i></span>
+                <div class="flex-1">
+                  <p class="text-white text-[11px] font-bold">تسميد المانجو</p>
+                  <p class="text-emerald-100/40 text-[9px]">قطعة الوادي · 8:00 ص</p>
+                </div>
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+              </div>
+              <div class="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-xl p-2.5">
+                <span class="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center"><i data-lucide="shield-check" class="w-4 h-4 text-violet-400"></i></span>
+                <div class="flex-1">
+                  <p class="text-white text-[11px] font-bold">رش وقائي للزيتون</p>
+                  <p class="text-emerald-100/40 text-[9px]">قطعة الشرق · 10:00 ص</p>
+                </div>
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+              </div>
+            </div>
+            <!-- Bottom nav -->
+            <div class="mt-3 bg-[#0c1f15] rounded-2xl px-4 py-2.5 flex items-center justify-between border border-white/10">
+              <i data-lucide="home" class="w-5 h-5 text-emerald-400"></i>
+              <i data-lucide="land-plot" class="w-5 h-5 text-emerald-100/40"></i>
+              <span class="w-10 h-10 -mt-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/40"><i data-lucide="plus" class="w-5 h-5 text-white"></i></span>
+              <i data-lucide="wallet" class="w-5 h-5 text-emerald-100/40"></i>
+              <i data-lucide="user" class="w-5 h-5 text-emerald-100/40"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating cards -->
+        <div class="absolute -top-6 -right-16 sm:-right-24 glass rounded-2xl p-3.5 w-52 float-anim-slow shadow-2xl hidden sm:block">
+          <div class="flex items-start gap-2.5">
+            <span class="w-9 h-9 rounded-xl bg-emerald-500/25 flex items-center justify-center shrink-0"><i data-lucide="bell-ring" class="w-4 h-4 text-emerald-300"></i></span>
+            <div>
+              <p class="text-white text-[11px] font-bold">تذكير بموعد</p>
+              <p class="text-emerald-100/60 text-[10px] leading-relaxed mt-0.5">حصاد محصول التين غداً الساعة 7 صباحاً 🌿</p>
+            </div>
+          </div>
+        </div>
+        <div class="absolute top-1/2 -left-16 sm:-left-28 glass rounded-2xl p-3.5 w-48 float-anim shadow-2xl hidden sm:block" style="animation-delay:1.2s">
+          <div class="flex items-center gap-2.5">
+            <span class="w-9 h-9 rounded-xl bg-lime-500/25 flex items-center justify-center"><i data-lucide="trending-up" class="w-4 h-4 text-lime-300"></i></span>
+            <div>
+              <p class="text-white text-[11px] font-bold">أرباح هذا الشهر</p>
+              <p class="text-lime-300 text-sm font-black">+12,500 ج.م</p>
+            </div>
+          </div>
+        </div>
+        <div class="absolute -bottom-4 right-8 glass rounded-2xl p-3 w-44 float-anim-slow shadow-2xl hidden sm:block" style="animation-delay:2s">
+          <div class="flex items-center gap-2.5">
+            <span class="w-9 h-9 rounded-xl bg-sky-500/25 flex items-center justify-center"><i data-lucide="droplets" class="w-4 h-4 text-sky-300"></i></span>
+            <div>
+              <p class="text-white text-[11px] font-bold">موعد الري القادم</p>
+              <p class="text-sky-300 text-[11px] font-bold">بعد ساعتين ⏰</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll hint -->
+  <a href="#stats" class="absolute bottom-6 left-1/2 -translate-x-1/2 text-emerald-300/60 hover:text-emerald-300 transition float-anim">
+    <i data-lucide="chevrons-down" class="w-7 h-7"></i>
+  </a>
+</section>
+
+<!-- ================= STATS ================= -->
+<section id="stats" class="relative z-10 -mt-0 py-14 bg-[#f6faf7]">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+    <div class="bg-white rounded-3xl shadow-xl shadow-emerald-900/5 border border-gray-100 grid grid-cols-2 lg:grid-cols-4 divide-x divide-x-reverse divide-gray-100 overflow-hidden">
+      <div class="p-6 lg:p-8 text-center">
+        <span class="inline-flex w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 items-center justify-center mb-3"><i data-lucide="users" class="w-6 h-6"></i></span>
+        <p class="text-3xl lg:text-4xl font-black text-gray-900"><span class="counter" data-target="5000">0</span>+</p>
+        <p class="text-gray-500 text-sm font-semibold mt-1">مزارع يستخدم التطبيق</p>
+      </div>
+      <div class="p-6 lg:p-8 text-center">
+        <span class="inline-flex w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 items-center justify-center mb-3"><i data-lucide="land-plot" class="w-6 h-6"></i></span>
+        <p class="text-3xl lg:text-4xl font-black text-gray-900"><span class="counter" data-target="12000">0</span>+</p>
+        <p class="text-gray-500 text-sm font-semibold mt-1">قطعة أرض مُدارة</p>
+      </div>
+      <div class="p-6 lg:p-8 text-center">
+        <span class="inline-flex w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 items-center justify-center mb-3"><i data-lucide="bell-ring" class="w-6 h-6"></i></span>
+        <p class="text-3xl lg:text-4xl font-black text-gray-900"><span class="counter" data-target="45000">0</span>+</p>
+        <p class="text-gray-500 text-sm font-semibold mt-1">تنبيه تم الوفاء به</p>
+      </div>
+      <div class="p-6 lg:p-8 text-center">
+        <span class="inline-flex w-12 h-12 rounded-2xl bg-lime-50 text-lime-600 items-center justify-center mb-3"><i data-lucide="piggy-bank" class="w-6 h-6"></i></span>
+        <p class="text-3xl lg:text-4xl font-black text-gray-900"><span class="counter" data-target="25">0</span>%</p>
+        <p class="text-gray-500 text-sm font-semibold mt-1">متوسط التوفير في التكاليف</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section id="features" class="py-20 lg:py-28 bg-[#f6faf7] relative overflow-hidden">
+  <div class="absolute top-20 -left-24 w-72 h-72 bg-emerald-200/40 rounded-full blur-3xl"></div>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 relative">
+    <div class="text-center max-w-2xl mx-auto mb-14 reveal">
+      <span class="inline-block bg-emerald-100 text-emerald-700 text-xs font-bold px-4 py-1.5 rounded-full mb-4">لماذا مزرعتي؟</span>
+      <h2 class="text-3xl lg:text-5xl font-black text-gray-900 leading-snug">كل ما تحتاجه مزرعتك<br class="hidden sm:block"> <span class="text-emerald-600">في تطبيق واحد</span></h2>
+      <p class="mt-4 text-gray-500 leading-relaxed">من تسجيل قطع الأرض ومتابعة المحاصيل، إلى حساب الأرباح والتنبيه بالمواعيد — صممنا كل ميزة لتناسب يوم المزارع الحقيقي.</p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- 1 -->
+      <div class="feature-card group bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-emerald-600/10 hover:-translate-y-2 transition-all duration-300 reveal">
+        <span class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform">
+          <i data-lucide="land-plot" class="w-7 h-7 text-white"></i>
+        </span>
+        <h3 class="text-xl font-extrabold text-gray-900 mb-2">إدارة الأراضي والمحاصيل</h3>
+        <p class="text-gray-500 text-sm leading-relaxed">أنشئ حسابك وأضف مزرعة أو أكثر، وسجّل لكل قطعة أرض مساحتها، محصولها، تاريخ الزراعة وعدد الأشجار — كل البيانات في بطاقة واضحة.</p>
+      </div>
+      <!-- 2 -->
+      <div class="feature-card group bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-sky-600/10 hover:-translate-y-2 transition-all duration-300 reveal" style="transition-delay:.08s">
+        <span class="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center shadow-lg shadow-sky-500/30 mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform">
+          <i data-lucide="alarm-clock" class="w-7 h-7 text-white"></i>
+        </span>
+        <h3 class="text-xl font-extrabold text-gray-900 mb-2">مواعيد وتنبيهات ذكية</h3>
+        <p class="text-gray-500 text-sm leading-relaxed">تابع مواعيد الري والتسميد والرش والتقليم والحصاد، مع تنبيهات فورية تضمن ألا تفوّت أي موعد مهم في مزرعتك.</p>
+      </div>
+      <!-- 3 -->
+      <div class="feature-card group bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-amber-600/10 hover:-translate-y-2 transition-all duration-300 reveal" style="transition-delay:.16s">
+        <span class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30 mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform">
+          <i data-lucide="wallet" class="w-7 h-7 text-white"></i>
+        </span>
+        <h3 class="text-xl font-extrabold text-gray-900 mb-2">مصروفات وإيرادات</h3>
+        <p class="text-gray-500 text-sm leading-relaxed">نظام محاسبة بسيط يحسب الأرباح والخسائر تلقائياً ويعرضها بشكل واضح، لتعرف بالضبط أين تذهب أموالك ومن أين تأتي.</p>
+      </div>
+      <!-- 4 -->
+      <div class="feature-card group bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-lime-600/10 hover:-translate-y-2 transition-all duration-300 reveal" style="transition-delay:.24s">
+        <span class="w-14 h-14 rounded-2xl bg-gradient-to-br from-lime-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-lime-500/30 mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform">
+          <i data-lucide="trending-up" class="w-7 h-7 text-white"></i>
+        </span>
+        <h3 class="text-xl font-extrabold text-gray-900 mb-2">متابعة أسعار المحاصيل</h3>
+        <p class="text-gray-500 text-sm leading-relافaxed">تابع أسعار السوق اليومية لمحاصيلك لحظة بلحظة، وحدد أفضل توقيت للبيع لتحقيق أقصى ربح ممكن.</p>
+      </div>
+      <!-- 5 -->
+      <div class="feature-card group bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-rose-600/10 hover:-translate-y-2 transition-all duration-300 reveal" style="transition-delay:.32s">
+        <span class="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-400 to-red-500 flex items-center justify-center shadow-lg shadow-rose-500/30 mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform">
+          <i data-lucide="bug" class="w-7 h-7 text-white"></i>
+        </span>
+        <h3 class="text-xl font-extrabold text-gray-900 mb-2">دليل الأمراض والآفات</h3>
+        <p class="text-gray-500 text-sm leading-relaxed">دليل شامل لأمراض النباتات وآفاتها مع صور وأعراض وطرق الوقاية والعلاج — كأن لديك مهندساً زراعياً في جيبك.</p>
+      </div>
+      <!-- 6 -->
+      <div class="feature-card group bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-2xl hover:shadow-teal-600/10 hover:-translate-y-2 transition-all duration-300 reveal" style="transition-delay:.4s">
+        <span class="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-teal-500/30 mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform">
+          <i data-lucide="lightbulb" class="w-7 h-7 text-white"></i>
+        </span>
+        <h3 class="text-xl font-extrabold text-gray-900 mb-2">نصائح زراعية يومية</h3>
+        <p class="text-gray-500 text-sm leading-relaxed">نصائح عملية ومجربة تساعدك على تحسين الإنتاجية وتقليل التكاليف، مُحدّثة باستمرار وفقاً للموسم الزراعي.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LIVE DEMO ================= -->
+<section id="demo" class="py-20 lg:py-28 bg-gradient-to-b from-[#0f2e1d] to-[#0a1f14] relative overflow-hidden">
+  <div class="blob w-[450px] h-[450px] bg-emerald-500 top-10 -right-40 opacity-20"></div>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 relative">
+    <div class="text-center max-w-2xl mx-auto mb-12 reveal">
+      <span class="inline-block glass text-emerald-300 text-xs font-bold px-4 py-1.5 rounded-full mb-4">🎮 تجربة حية</span>
+      <h2 class="text-3xl lg:text-5xl font-black text-white leading-snug">جرّب التطبيق <span class="grad-text">الآن بدون تحميل</span></h2>
+      <p class="mt-4 text-emerald-100/60 leading-relaxed">هذه نسخة تفاعلية حقيقية — أضف مهامك، سجّل مصروفاتك، وشاهد الأرباح تُحسب أمام عينك تماماً كما في التطبيق.</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8 reveal">
+      <button data-tab="lands" class="demo-tab inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 transition-all">
+        <i data-lucide="land-plot" class="w-4 h-4"></i> قطع الأرض
+      </button>
+      <button data-tab="tasks" class="demo-tab inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold glass text-emerald-100 hover:bg-white/15 transition-all">
+        <i data-lucide="calendar-check" class="w-4 h-4"></i> المهام والتنبيهات
+      </button>
+      <button data-tab="finance" class="demo-tab inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold glass text-emerald-100 hover:bg-white/15 transition-all">
+        <i data-lucide="wallet" class="w-4 h-4"></i> المالية
+      </button>
+      <button data-tab="prices" class="demo-tab inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold glass text-emerald-100 hover:bg-white/15 transition-all">
+        <i data-lucide="trending-up" class="w-4 h-4"></i> الأسعار المباشرة
+      </button>
+    </div>
+
+    <div class="bg-white/5 border border-white/10 rounded-[2rem] p-5 sm:p-8 backdrop-blur-xl reveal">
+
+      <!-- ===== TAB: LANDS ===== -->
+      <div id="tab-lands" class="tab-panel active">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 class="text-xl font-extrabold text-white">مزرعة أحمد — الفيوم</h3>
+            <p class="text-emerald-100/50 text-sm mt-1">3 قطع أرض مسجلة · إجمالي 25 فدان</p>
+          </div>
+          <button onclick="showToast('في التطبيق الحقيقي يمكنك إضافة عدد غير محدود من المزارع والقطع 🌱','success')" class="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition">
+            <i data-lucide="plus" class="w-4 h-4"></i> إضافة قطعة أرض
+          </button>
+        </div>
+        <div class="grid md:grid-cols-3 gap-5">
+          <div class="bg-white rounded-2xl p-5 shadow-xl hover:-translate-y-1 transition-transform">
+            <div class="flex items-start justify-between mb-4">
+              <span class="w-12 h-12 rounded-2xl bg-lime-100 flex items-center justify-center text-2xl">🌿</span>
+              <span class="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full">حالة ممتازة</span>
+            </div>
+            <h4 class="font-extrabold text-gray-900">قطعة الشمال</h4>
+            <p class="text-sm text-gray-500 mb-4">محصول: التين البلدي</p>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between"><span class="text-gray-400">المساحة</span><span class="font-bold text-gray-800">5 فدان</span></div>
+              <div class="flex justify-between"><span class="text-gray-400">عدد الأشجار</span><span class="font-bold text-gray-800">320 شجرة</span></div>
+              <div class="flex justify-between"><span class="text-gray-400">تاريخ الزراعة</span><span class="font-bold text-gray-800">مارس 2023</span></div>
+            </div>
+            <div class="mt-4">
+              <div class="flex justify-between text-[11px] font-bold mb-1.5"><span class="text-gray-400">مرحلة النمو</span><span class="text-emerald-600">72%</span></div>
+              <div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-l from-emerald-400 to-emerald-600 rounded-full" style="width:72%"></div></div>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-xl hover:-translate-y-1 transition-transform">
+            <div class="flex items-start justify-between mb-4">
+              <span class="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-2xl">🥭</span>
+              <span class="text-[11px] font-bold bg-amber-100 text-amber-700 px-3 py-1 rounded-full">تحتاج ري</span>
+            </div>
+            <h4 class="font-extrabold text-gray-900">قطعة الوادي</h4>
+            <p class="text-sm text-gray-500 mb-4">محصول: المانجو</p>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between"><span class="text-gray-400">المساحة</span><span class="font-bold text-gray-800">8 فدان</span></div>
+              <div class="flex justify-between"><span class="text-gray-400">عدد الأشجار</span><span class="font-bold text-gray-800">210 شجرة</span></div>
+              <div class="flex justify-between"><span class="text-gray-400">تاريخ الزراعة</span><span class="font-bold text-gray-800">سبتمبر 2022</span></div>
+            </div>
+            <div class="mt-4">
+              <div class="flex justify-between text-[11px] font-bold mb-1.5"><span class="text-gray-400">مرحلة النمو</span><span class="text-emerald-600">85%</span></div>
+              <div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-l from-amber-400 to-orange-500 rounded-full" style="width:85%"></div></div>
+            </div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-xl hover:-translate-y-1 transition-transform">
+            <div class="flex items-start justify-between mb-4">
+              <span class="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-2xl">🌾</span>
+              <span class="text-[11px] font-bold bg-sky-100 text-sky-700 px-3 py-1 rounded-full">في مرحلة النمو</span>
+            </div>
+            <h4 class="font-extrabold text-gray-900">الأرض الحقلية</h4>
+            <p class="text-sm text-gray-500 mb-4">محصول: القمح</p>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between"><span class="text-gray-400">المساحة</span><span class="font-bold text-gray-800">12 فدان</span></div>
+              <div class="flex justify-between"><span class="text-gray-400">النوع</span><span class="font-bold text-gray-800">حقل مفتوح</span></div>
+              <div class="flex justify-between"><span class="text-gray-400">تاريخ الزراعة</span><span class="font-bold text-gray-800">نوفمبر 2023</span></div>
+            </div>
+            <div class="mt-4">
+              <div class="flex justify-between text-[11px] font-bold mb-1.5"><span class="text-gray-400">مرحلة النمو</span><span class="text-emerald-600">46%</span></div>
+              <div class="h-2 bg-gray-100 rounded-full overflow-hidden"><div class="h-full bg-gradient-to-l from-sky-400 to-sky-600 rounded-full" style="width:46%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: TASKS ===== -->
+      <div id="tab-tasks" class="tab-panel">
+        <div class="grid lg:grid-cols-3 gap-6">
+          <!-- Progress -->
+          <div class="bg-white rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-xl">
+            <h4 class="font-extrabold text-gray-900 mb-5">إنجاز مهام اليوم</h4>
+            <div class="relative w-32 h-32">
+              <svg class="w-32 h-32 -rotate-90" viewBox="0 0 64 64">
+                <circle cx="32" cy="32" r="26" fill="none" stroke="#e7f0ea" stroke-width="6.5"/>
+                <circle id="progressRing" cx="32" cy="32" r="26" fill="none" stroke="#10b981" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span id="ringPercent" class="text-3xl font-black text-emerald-600">0%</span>
+                <span id="ringCount" class="text-[11px] text-gray-400 font-semibold">0 من 4</span>
+              </div>
+            </div>
+            <div id="taskAlert" class="mt-5 w-full bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold rounded-xl px-4 py-3 flex items-center gap-2 justify-center">
+              <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+              لديك مهمة متأخرة عن موعدها!
+            </div>
+            <button onclick="showToast('سيصل التنبيه على موبايلك قبل كل موعد بساعة ⏰','info')" class="mt-3 w-full inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-3 rounded-xl transition">
+              <i data-lucide="bell-ring" class="w-4 h-4"></i> تفعيل التنبيهات الذكية
+            </button>
+          </div>
+          <!-- List + add -->
+          <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-xl">
+              <div class="flex flex-wrap gap-2 mb-5">
+                <input id="taskInput" type="text" placeholder="أضف مهمة جديدة… مثال: حصاد الفراولة" class="flex-1 min-w-[180px] bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent">
+                <select id="taskType" class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                  <option>ري</option><option>تسميد</option><option>رش</option><option>تقليم</option><option>حصاد</option>
+                </select>
+                <button id="addTaskBtn" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-5 py-3 rounded-xl transition">
+                  <i data-lucide="plus" class="w-4 h-4"></i> إضافة
+                </button>
+              </div>
+              <div id="tasksList" class="space-y-3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: FINANCE ===== -->
+      <div id="tab-finance" class="tab-panel">
+        <div class="grid lg:grid-cols-3 gap-6">
+          <!-- Summary -->
+          <div class="space-y-4">
+            <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl p-5 text-white shadow-xl">
+              <p class="text-emerald-100 text-xs font-bold">صافي الربح الحالي</p>
+              <p id="netProfit" class="text-3xl font-black mt-1">+9,400 ج.م</p>
+              <p class="text-emerald-100/70 text-[11px] mt-2">يُحسب تلقائياً = الإيرادات − المصروفات</p>
+            </div>
+            <div class="bg-white rounded-2xl p-5 shadow-xl flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center"><i data-lucide="arrow-down-left" class="w-5 h-5 text-emerald-600"></i></span>
+                <div><p class="text-xs text-gray-400 font-bold">إجمالي الإيرادات</p><p id="totalIncome" class="text-lg font-black text-emerald-600">12,800 ج.م</p></div>
+              </div>
+            </div>
+            <div class="bg-white rounded-2xl p-5 shadow-xl flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center"><i data-lucide="arrow-up-right" class="w-5 h-5 text-rose-500"></i></span>
+                <div><p class="text-xs text-gray-400 font-bold">إجمالي المصروفات</p><p id="totalExpense" class="text-lg font-black text-rose-500">3,400 ج.م</p></div>
+              </div>
+            </div>
+            <!-- Add form -->
+            <div class="bg-white rounded-2xl p-5 shadow-xl">
+              <p class="font-extrabold text-gray-900 text-sm mb-3">سجّل عملية جديدة</p>
+              <div class="space-y-3">
+                <select id="txType" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                  <option value="income">📥 إيراد (بيع محصول)</option>
+                  <option value="expense">📤 مصروف (تكلفة)</option>
+                </select>
+                <select id="txCat" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                  <option>بيع محاصيل</option><option>أجور عمال</option><option>أسمدة وتربة</option><option>مبيدات ورش</option><option>مياه وري</option><option>أخرى</option>
+                </select>
+                <input id="txAmount" type="number" placeholder="المبلغ (ج.م)" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
+                <button id="addTxBtn" class="w-full bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold py-3 rounded-xl transition">تسجيل العملية</button>
+              </div>
+            </div>
+          </div>
+          <!-- Chart + transactions -->
+          <div class="lg:col-span-2 space-y-5">
+            <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-xl">
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="font-extrabold text-gray-900">الإيرادات مقابل المصروفات (آخر 6 أشهر)</h4>
+                <span class="text-[11px] font-bold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full">بالآلاف ج.م</span>
+              </div>
+              <div class="relative h-64 sm:h-72"><canvas id="financeChart"></canvas></div>
+            </div>
+            <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-xl">
+              <h4 class="font-extrabold text-gray-900 mb-4">آخر العمليات</h4>
+              <div id="txList" class="space-y-2.5"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TAB: PRICES ===== -->
+      <div id="tab-prices" class="tab-panel">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div>
+            <h3 class="text-xl font-extrabold text-white flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-lime-400 blink"></span> أسعار السوق المباشرة</h3>
+            <p class="text-emerald-100/50 text-sm mt-1">تُحدّث الأسعار تلقائياً كل بضع ثوانٍ — شاهد التغيّر مباشرة</p>
+          </div>
+          <span class="text-[11px] font-bold glass text-emerald-300 px-3 py-1.5 rounded-full">💰 محطة سوق الصرف الزراعي</span>
+        </div>
+        <div class="bg-white rounded-2xl overflow-hidden shadow-xl">
+          <div class="hidden sm:grid grid-cols-4 bg-gray-50 px-6 py-3.5 text-xs font-black text-gray-400">
+            <span>المحصول</span><span>الوحدة</span><span>السعر</span><span class="text-left">التغير اليومي</span>
+          </div>
+          <div id="pricesList"></div>
+        </div>
+        <p class="text-center text-emerald-100/40 text-xs mt-4">* الأسعار في هذه النسخة التجريبية محاكاة — في التطبيق الحقيقي تُسحب من أسعار السوق الفعلية</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICE TICKER ================= -->
+<div class="bg-[#081711] border-y border-white/5 py-3 overflow-hidden relative" dir="ltr">
+  <div class="ticker-track flex gap-10 w-max" id="tickerTrack"></div>
+</div>
+
+<!-- ================= DISEASES ================= -->
+<section id="diseases" class="py-20 lg:py-28 bg-white relative overflow-hidden">
+  <div class="absolute -bottom-24 -right-24 w-80 h-80 bg-rose-100 rounded-full blur-3xl"></div>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 relative">
+    <div class="text-center max-w-2xl mx-auto mb-12 reveal">
+      <span class="inline-block bg-rose-50 text-rose-600 text-xs font-bold px-4 py-1.5 rounded-full mb-4">🛡️ حماية محصولك</span>
+      <h2 class="text-3xl lg:text-5xl font-black text-gray-900 leading-snug">دليل الأمراض <span class="text-rose-500">والآفات</span></h2>
+      <p class="mt-4 text-gray-500 leading-relaxed">اعرف الأعراض، وطرق الوقاية، والعلاج المناسب — اضغط على أي آفة لعرض التفاصيل الكاملة.</p>
+    </div>
+
+    <div class="space-y-4" id="diseasesAcc">
+      <!-- items rendered by JS -->
+    </div>
+
+    <div class="mt-8 text-center reveal">
+      <button onclick="showToast('الدليل الكامل يحتوي +120 آفة ومرض مع صور توضيحية 📚','info')" class="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-bold px-7 py-3.5 rounded-2xl transition hover:-translate-y-0.5">
+        <i data-lucide="book-open" class="w-5 h-5"></i> استعرض الدليل الكامل في التطبيق
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TIPS ================= -->
+<section class="py-20 bg-gradient-to-b from-emerald-50 to-[#f6faf7]">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6">
+    <div class="text-center mb-10 reveal">
+      <span class="inline-block bg-emerald-100 text-emerald-700 text-xs font-bold px-4 py-1.5 rounded-full mb-4">💡 نصيحة اليوم</span>
+      <h2 class="text-3xl lg:text-4xl font-black text-gray-900">خبرة زراعية تصلك كل يوم</h2>
+    </div>
+    <div class="bg-white rounded-[2rem] shadow-2xl shadow-emerald-900/10 border border-emerald-100/60 p-8 sm:p-12 text-center relative overflow-hidden reveal">
+      <i data-lucide="quote" class="w-14 h-14 text-emerald-100 absolute top-6 right-8"></i>
+      <div id="tipIcon" class="text-5xl mb-5">🌱</div>
+      <p id="tipText" class="text-lg sm:text-xl font-bold text-gray-800 leading-relaxed max-w-2xl mx-auto min-h-[84px]"></p>
+      <div class="flex items-center justify-center gap-2 mt-6" id="tipDots"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= AUDIENCE ================= -->
+<section id="audience" class="py-20 lg:py-28 bg-[#f6faf7]">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="text-center max-w-2xl mx-auto mb-14 reveal">
+      <span class="inline-block bg-sky-50 text-sky-600 text-xs font-bold px-4 py-1.5 rounded-full mb-4">👥 لمن هذا التطبيق؟</span>
+      <h2 class="text-3xl lg:text-5xl font-black text-gray-900 leading-snug">صُمم لكل عاشق <span class="text-emerald-600">للأرض</span></h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="group relative bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 overflow-hidden reveal">
+        <div class="absolute -top-10 -left-10 w-28 h-28 bg-emerald-100 rounded-full blur-2xl opacity-60 group-hover:scale-150 transition-transform"></div>
+        <span class="relative text-4xl">🚜</span>
+        <h3 class="relative text-lg font-extrabold text-gray-900 mt-4 mb-2">أصحاب المزارع</h3>
+        <p class="relative text-gray-500 text-sm leading-relaxed">صغيرة أو كبيرة — نظّم شغلك اليومي وخفّض تكاليفك بخطط مبنية على أرقامك أنت.</p>
+      </div>
+      <div class="group relative bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 overflow-hidden reveal" style="transition-delay:.1s">
+        <div class="absolute -top-10 -left-10 w-28 h-28 bg-orange-100 rounded-full blur-2xl opacity-60 group-hover:scale-150 transition-transform"></div>
+        <span class="relative text-4xl">🥭</span>
+        <h3 class="relative text-lg font-extrabold text-gray-900 mt-4 mb-2">مزارعو الفاكهة</h3>
+        <p class="relative text-gray-500 text-sm leading-relaxed">تين، مانجو، زيتون وأكثر — جدولة التقليم والحصاد ودورة كل شجرة على حدة.</p>
+      </div>
+      <div class="group relative bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 overflow-hidden reveal" style="transition-delay:.2s">
+        <div class="absolute -top-10 -left-10 w-28 h-28 bg-amber-100 rounded-full blur-2xl opacity-60 group-hover:scale-150 transition-transform"></div>
+        <span class="relative text-4xl">🌾</span>
+        <h3 class="relative text-lg font-extrabold text-gray-900 mt-4 mb-2">المحاصيل الحقلية</h3>
+        <p class="relative text-gray-500 text-sm leading-relaxed">قمح، ذرة وقطن — تابع دورة المحصول كاملة من البذارة حتى البيع وحدد أرباحك.</p>
+      </div>
+      <div class="group relative bg-white rounded-3xl p-7 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-300 overflow-hidden reveal" style="transition-delay:.3s">
+        <div class="absolute -top-10 -left-10 w-28 h-28 bg-sky-100 rounded-full blur-2xl opacity-60 group-hover:scale-150 transition-transform"></div>
+        <span class="relative text-4xl">🧑‍🔬</span>
+        <h3 class="relative text-lg font-extrabold text-gray-900 mt-4 mb-2">المهندسون الزراعيون</h3>
+        <p class="relative text-gray-500 text-sm leading-relaxed">أدر عدة مزارع لعملائك من حساب واحد، وأصدر تقارير احترافية مبنية على بيانات دقيقة.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= AI FUTURE ================= -->
+<section class="py-20 lg:py-28 bg-night relative overflow-hidden">
+  <div class="blob w-[500px] h-[500px] bg-violet-600 top-0 left-1/4 opacity-20"></div>
+  <div class="blob w-[350px] h-[350px] bg-emerald-500 bottom-0 right-10 opacity-15"></div>
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 relative">
+    <div class="grid lg:grid-cols-2 gap-14 items-center">
+      <div class="reveal">
+        <span class="inline-flex items-center gap-2 glass text-violet-300 text-xs font-bold px-4 py-2 rounded-full mb-6">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> قريباً — الجيل القادم من مزرعتي
+        </span>
+        <h2 class="text-3xl lg:text-5xl font-black text-white leading-snug">ذكاء اصطناعي<br><span class="grad-text">يعرف مزرعتك أكثر منك</span></h2>
+        <p class="mt-5 text-emerald-100/60 leading-relaxed">نطلق قريباً محرك ذكاء اصطناعي يحلل صور نباتاتك ويكتشف الأمراض قبل انتشارها، ويقدم توصيات مخصصة لمزرعتك أنت تحديداً.</p>
+        <button onclick="showToast('سنخطرك بمجرد توفر ميزات الذكاء الاصطناعي! 🤖','success')" class="mt-8 inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white font-bold px-7 py-3.5 rounded-2xl shadow-lg shadow-violet-600/30 hover:-translate-y-0.5 transition-all">
+          <i data-lucide="bell-plus" class="w-5 h-5"></i> أخبرني عند الإطلاق
+        </button>
+      </div>
+      <div class="space-y-4">
+        <div class="glass rounded-2xl p-6 flex items-start gap-4 hover:bg-white/12 transition-colors reveal" style="transition-delay:.1s">
+          <span class="w-12 h-12 rounded-2xl bg-violet-500/25 flex items-center justify-center shrink-0"><i data-lucide="camera" class="w-6 h-6 text-violet-300"></i></span>
+          <div>
+            <h4 class="text-white font-extrabold mb-1">تحليل صور النباتات 📸</h4>
+            <p class="text-emerald-100/50 text-sm leading-relaxed">صوّر الورقة المصابة بكاميرا موبايلك، والذكاء الاصطناعي يتعرف على المرض خلال ثوانٍ.</p>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-6 flex items-start gap-4 hover:bg-white/12 transition-colors reveal" style="transition-delay:.2s">
+          <span class="w-12 h-12 rounded-2xl bg-rose-500/25 flex items-center justify-center shrink-0"><i data-lucide="radar" class="w-6 h-6 text-rose-300"></i></span>
+          <div>
+            <h4 class="text-white font-extrabold mb-1">التنبؤ بالأمراض مبكراً 🔮</h4>
+            <p class="text-emerald-100/50 text-sm leading-relaxed">بناءً على الطقس وبيانات مزرعتك، يتوقع التطبيق خطر الإصابة قبل ظهور الأعراض.</p>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-6 flex items-start gap-4 hover:bg-white/12 transition-colors reveal" style="transition-delay:.3s">
+          <span class="w-12 h-12 rounded-2xl bg-emerald-500/25 flex items-center justify-center shrink-0"><i data-lucide="brain-circuit" class="w-6 h-6 text-emerald-300"></i></span>
+          <div>
+            <h4 class="text-white font-extrabold mb-1">توصيات مخصصة لمزرعتك 🎯</h4>
+            <p class="text-emerald-100/50 text-sm leading-relaxed">خطط ري وتسميد ذكية مبنية على نوع تربتك، محاصيلك، وتاريخ مزرعتك بالكامل.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DOWNLOAD CTA ================= -->
+<section id="download" class="py-20 lg:py-24 bg-[#f6faf7]">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6">
+    <div class="relative bg-gradient-to-br from-emerald-600 via-emerald-700 to-[#0f2e1d] rounded-[2.5rem] p-10 sm:p-16 overflow-hidden text-center reveal">
+      <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle at 1px 1px, #fff 1.5px, transparent 0); background-size: 28px 28px;"></div>
+      <div class="absolute -top-20 -right-20 w-72 h-72 bg-lime-400/20 rounded-full blur-3xl"></div>
+      <div class="relative">
+        <span class="inline-flex w-16 h-16 rounded-2xl bg-white/15 backdrop-blur items-center justify-center mb-6"><i data-lucide="sprout" class="w-8 h-8 text-white"></i></span>
+        <h2 class="text-3xl lg:text-5xl font-black text-white leading-snug">جاهز تحصد <span class="text-lime-300">أرباحاً أكبر؟</span></h2>
+        <p class="mt-4 text-emerald-100/80 max-w-xl mx-auto leading-relaxed">حمّل تطبيق "مزرعتي" مجاناً اليوم، وأنشئ حسابك في أقل من دقيقة. مزرعتك تستحق الإدارة الذكية.</p>
+        <div class="mt-9 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <button onclick="showToast('سيتم توجيهك إلى متجر التطبيقات قريباً 📲','info')" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-black hover:bg-gray-900 text-white px-7 py-4 rounded-2xl border border-white/20 hover:-translate-y-1 transition-all shadow-xl">
+            <i data-lucide="apple" class="w-7 h-7"></i>
+            <span class="text-right leading-tight"><span class="block text-[10px] text-gray-300">متوفر على</span><span class="block text-base font-bold">App Store</span></span>
+          </button>
+          <button onclick="showToast('سيتم توجيهك إلى متجر التطبيقات قريباً 📲','info')" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-black hover:bg-gray-900 text-white px-7 py-4 rounded-2xl border border-white/20 hover:-translate-y-1 transition-all shadow-xl">
+            <i data-lucide="play" class="w-6 h-6 text-emerald-400"></i>
+            <span class="text-right leading-tight"><span class="block text-[10px] text-gray-300">احصل عليه على</span><span class="block text-base font-bold">Google Play</span></span>
+          </button>
+        </div>
+        <p class="mt-6 text-emerald-100/50 text-xs font-semibold flex items-center justify-center gap-2">
+          <i data-lucide="shield-check" class="w-4 h-4 text-lime-400"></i> مجاني 100% · بدون بطاقة بنكية · بياناتك آمنة ومشفّرة
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="bg-night text-emerald-100/60 pt-16 pb-8 border-t border-white/5">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
+      <div>
+        <div class="flex items-center gap-2.5 mb-4">
+          <span class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center"><i data-lucide="sprout" class="w-5 h-5 text-white"></i></span>
+          <span class="text-2xl font-black text-white">مزرعتي</span>
+        </div>
+        <p class="text-sm leading-relaxed">منصة متكاملة لإدارة المزارع تساعدك على تنظيم شغلك، تقليل التكاليف، زيادة الإنتاج، واتخاذ قرارات أفضل مبنية على بيانات مزرعتك الحقيقية.</p>
+        <div class="flex gap-3 mt-5">
+          <a href="#" onclick="showToast('تابعنا على فيسبوك 📘','info'); return false;" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-emerald-600 flex items-center justify-center transition"><i data-lucide="facebook" class="w-4 h-4"></i></a>
+          <a href="#" onclick="showToast('تابعنا على تويتر 🐦','info'); return false;" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-emerald-600 flex items-center justify-center transition"><i data-lucide="twitter" class="w-4 h-4"></i></a>
+          <a href="#" onclick="showToast('تابعنا على إنستجرام 📷','info'); return false;" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-emerald-600 flex items-center justify-center transition"><i data-lucide="instagram" class="w-4 h-4"></i></a>
+          <a href="#" onclick="showToast('تابعنا على يوتيوب ▶️','info'); return false;" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-emerald-600 flex items-center justify-center transition"><i data-lucide="youtube" class="w-4 h-4"></i></a>
+        </div>
+      </div>
+      <div>
+        <h4 class="text-white font-extrabold mb-4 text-sm">روابط سريعة</h4>
+        <ul class="space-y-2.5 text-sm">
+          <li><a href="#home" class="hover:text-emerald-300 transition">الرئيسية</a></li>
+          <li><a href="#features" class="hover:text-emerald-300 transition">المميزات</a></li>
+          <li><a href="#demo" class="hover:text-emerald-300 transition">تجربة حية</a></li>
+          <li><a href="#diseases" class="hover:text-emerald-300 transition">دليل الأمراض والآفات</a></li>
+          <li><a href="#download" class="hover:text-emerald-300 transition">تحميل التطبيق</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-white font-extrabold mb-4 text-sm">أقسام التطبيق</h4>
+        <ul class="space-y-2.5 text-sm">
+          <li class="flex items-center gap-2"><i data-lucide="land-plot" class="w-4 h-4 text-emerald-500"></i> إدارة الأراضي</li>
+          <li class="flex items-center gap-2"><i data-lucide="alarm-clock" class="w-4 h-4 text-emerald-500"></i> مواعيد وتنبيهات</li>
+          <li class="flex items-center gap-2"><i data-lucide="wallet" class="w-4 h-4 text-emerald-500"></i> مصروفات وإيرادات</li>
+          <li class="flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4 text-emerald-500"></i> أسعار المحاصيل</li>
+          <li class="flex items-center gap-2"><i data-lucide="lightbulb" class="w-4 h-4 text-emerald-500"></i> نصائح زراعية</li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-white font-extrabold mb-4 text-sm">النشرة الزراعية</h4>
+        <p class="text-sm leading-relaxed mb-4">اشترك ليصلك أهم النصائح وأسعار المحاصيل أسبوعياً.</p>
+        <form onsubmit="event.preventDefault(); showToast('تم الاشتراك في النشرة بنجاح! 🌱','success'); this.reset();" class="flex gap-2">
+          <input type="email" required placeholder="بريدك الإلكتروني" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-emerald-100/30 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <button class="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl px-4 transition"><i data-lucide="send" class="w-4 h-4"></i></button>
+        </form>
+        <p class="mt-4 text-xs flex items-center gap-1.5"><i data-lucide="mail" class="w-3.5 h-3.5 text-emerald-500"></i> support@mazraaty.app</p>
+      </div>
+    </div>
+    <div class="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+      <p>© 2025 تطبيق مزرعتي — جميع الحقوق محفوظة. صُنع بـ 💚 للمزارع العربي.</p>
+      <div class="flex gap-5">
+        <a href="#" onclick="showToast('سياسة الخصوصية','info'); return false;" class="hover:text-emerald-300 transition">سياسة الخصوصية</a>
+        <a href="#" onclick="showToast('شروط الاستخدام','info'); return false;" class="hover:text-emerald-300 transition">شروط الاستخدام</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Toast -->
+<div id="toast">
+  <div class="flex items-center gap-3 bg-gray-900 text-white text-sm font-bold px-5 py-3.5 rounded-2xl shadow-2xl border border-white/10 max-w-sm">
+    <span id="toastIcon" class="w-8 h-8 rounded-xl bg-emerald-500/25 flex items-center justify-center shrink-0"><i data-lucide="check" class="w-4 h-4 text-emerald-400"></i></span>
+    <span id="toastMsg"></span>
+  </div>
+</div>
+
+<!-- Back to top -->
+<button id="backTop" class="fixed bottom-6 right-6 w-12 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-600/30 flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 z-40 hover:-translate-y-1">
+  <i data-lucide="arrow-up" class="w-5 h-5"></i>
+</button>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+
+  /* ---------- Toast ---------- */
+  const toast = document.getElementById('toast');
+  const toastMsg = document.getElementById('toastMsg');
+  let toastTimer;
+  window.showToast = function(msg, type = 'success') {
+    toastMsg.textContent = msg;
+    const iconWrap = document.getElementById('toastIcon');
+    iconWrap.innerHTML = type === 'success'
+      ? '<i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>'
+      : '<i data-lucide="info" class="w-4 h-4 text-sky-400"></i>';
+    lucide.createIcons();
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+  };
+
+  /* ---------- Navbar scroll ---------- */
+  const navbar = document.getElementById('navbar');
+  const logoText = document.getElementById('logoText');
+  const backTop = document.getElementById('backTop');
+  function onScroll() {
+    if (window.scrollY > 40) {
+      navbar.classList.add('bg-white/90', 'backdrop-blur-xl', 'shadow-lg', 'shadow-gray-900/5');
+      logoText.classList.remove('text-white'); logoText.classList.add('text-gray-900');
+      document.querySelectorAll('.nav-link').forEach(l => { l.classList.remove('text-white/90'); l.classList.add('text-gray-600'); });
+      backTop.classList.remove('opacity-0', 'pointer-events-none');
+    } else {
+      navbar.classList.remove('bg-white/90', 'backdrop-blur-xl', 'shadow-lg', 'shadow-gray-900/5');
+      logoText.classList.add('text-white'); logoText.classList.remove('text-gray-900');
+      document.querySelectorAll('.nav-link').forEach(l => { l.classList.add('text-white/90'); l.classList.remove('text-gray-600'); });
+      backTop.classList.add('opacity-0', 'pointer-events-none');
+    }
+  }
+  window.addEventListener('scroll', onScroll); onScroll();
+  backTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+  /* ---------- Mobile menu ---------- */
+  const menuBtn = document.getElementById('menuBtn');
+  const mobileMenu = document.getElementById('mobileMenu');
+  menuBtn.addEventListener('click', () => mobileMenu.classList.toggle('open'));
+  document.querySelectorAll('.mob-link').forEach(l => l.addEventListener('click', () => mobileMenu.classList.remove('open')));
+
+  /* ---------- Reveal on scroll ---------- */
+  const revealObs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('revealed'); revealObs.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+  /* ---------- Counters ---------- */
+  const counters = document.querySelectorAll('.counter');
+  const countObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const el = e.target, target = +el.dataset.target, dur = 1800, start = performance.now();
+      function step(now) {
+        const p = Math.min((now - start) / dur, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.floor(eased * target).toLocaleString('en-US');
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+      countObs.unobserve(el);
+    });
+  }, { threshold: 0.5 });
+  counters.forEach(c => countObs.observe(c));
+
+  /* ---------- Demo tabs ---------- */
+  let financeChart = null;
+  const tabs = document.querySelectorAll('.demo-tab');
+  function activateTab(name) {
+    tabs.forEach(t => {
+      const on = t.dataset.tab === name;
+      t.classList.toggle('bg-emerald-500', on);
+      t.classList.toggle('text-white', on);
+      t.classList.toggle('shadow-lg', on);
+      t.classList.toggle('shadow-emerald-500/30', on);
+      t.classList.toggle('glass', !on);
+      t.classList.toggle('text-emerald-100', !on);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    if (name === 'finance') {
+      setTimeout(() => {
+        if (!financeChart) initFinanceChart();
+        else financeChart.resize();
+      }, 60);
+    }
+  }
+  tabs.forEach(t => t.addEventListener('click', () => activateTab(t.dataset.tab)));
+
+  /* ---------- Tasks ---------- */
+  const tasks = [
+    { id: 1, title: 'ري أشجار التين', plot: 'قطعة الشمال', time: '6:00 م', type: 'ري', done: false, overdue: true },
+    { id: 2, title: 'تسميد المانجو', plot: 'قطعة الوادي', time: '8:00 ص', type: 'تسميد', done: true, overdue: false },
+    { id: 3, title: 'رش وقائي للزيتون', plot: 'قطعة الشرق', time: '10:00 ص', type: 'رش', done: true, overdue: false },
+    { id: 4, title: 'تقليم أشجار الزيتون', plot: 'قطعة الشرق', time: '4:00 م', type: 'تقليم', done: false, overdue: false },
+  ];
+  const typeStyles = {
+    'ري': 'bg-sky-100 text-sky-700', 'تسميد': 'bg-amber-100 text-amber-700',
+    'رش': 'bg-violet-100 text-violet-700', 'تقليم': 'bg-teal-100 text-teal-700',
+    'حصاد': 'bg-orange-100 text-orange-700'
+  };
+  const typeIcons = { 'ري': 'droplets', 'تسميد': 'flask-conical', 'رش': 'shield-check', 'تقليم': 'scissors', 'حصاد': 'wheat' };
+  const tasksList = document.getElementById('tasksList');
+  let nextId = 5;
+
+  function renderTasks() {
+    tasksList.innerHTML = '';
+    tasks.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'task-item flex items-center gap-3 bg-gray-50 hover:bg-gray-100/80 border border-gray-100 rounded-xl p-3.5 transition-all' + (t.done ? ' done' : '');
+      el.innerHTML = `
+        <button class="task-check w-7 h-7 rounded-full border-2 ${t.done ? '' : 'border-gray-300 hover:border-emerald-500'} flex items-center justify-center shrink-0">
+          <i data-lucide="check" class="w-4 h-4 text-white"></i>
+        </button>
+        <span class="w-9 h-9 rounded-lg ${typeStyles[t.type] || 'bg-gray-100 text-gray-600'} flex items-center justify-center shrink-0">
+          <i data-lucide="${typeIcons[t.type] || 'list-todo'}" class="w-4 h-4"></i>
+        </span>
+        <div class="flex-1 min-w-0">
+          <p class="task-title text-sm font-bold text-gray-800 truncate">${t.title}</p>
+          <p class="text-[11px] text-gray-400 font-semibold">${t.plot} · ${t.time}</p>
+        </div>
+        ${t.overdue && !t.done ? '<span class="text-[10px] bg-rose-100 text-rose-600 font-black px-2.5 py-1 rounded-full shrink-0">متأخر</span>' : ''}
+        <button class="del-task w-8 h-8 rounded-lg text-gray-300 hover:text-rose-500 hover:bg-rose-50 flex items-center justify-center shrink-0 transition">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>`;
+      el.querySelector('.task-check').addEventListener('click', () => {
+        t.done = !t.done;
+        renderTasks();
+        const done = tasks.filter(x => x.done).length;
+        if (t.done && done === tasks.length) showToast('أحسنت! أكملت جميع مهام اليوم 🎉🌿', 'success');
+        else if (t.done) showToast('تم إنجاز المهمة، أحسنت! ✅', 'success');
+      });
+      el.querySelector('.del-task').addEventListener('click', () => {
+        tasks.splice(tasks.indexOf(t), 1);
+        renderTasks();
+        showToast('تم حذف المهمة 🗑️', 'info');
+      });
+      tasksList.appendChild(el);
+    });
+    lucide.createIcons();
+    updateRing();
+  }
+
+  function updateRing() {
+    const done = tasks.filter(t => t.done).length;
+    const total = tasks.length || 1;
+    const pct = Math.round((done / total) * 100);
+    const ring = document.getElementById('progressRing');
+    const c = 2 * Math.PI * 26;
+    ring.setAttribute('stroke-dashoffset', c - (c * pct / 100));
+    ring.setAttribute('stroke', pct === 100 ? '#22c55e' : '#10b981');
+    document.getElementById('ringPercent').textContent = pct + '%';
+    document.getElementById('ringCount').textContent = done + ' من ' + tasks.length;
+    const alert = document.getElementById('taskAlert');
+    const hasOverdue = tasks.some(t => t.overdue && !t.done);
+    alert.style.display = hasOverdue ? 'flex' : 'none';
+  }
+
+  document.getElementById('addTaskBtn').addEventListener('click', () => {
+    const inp = document.getElementById('taskInput');
+    const type = document.getElementById('taskType').value;
+    if (!inp.value.trim()) { showToast('اكتب اسم المهمة أولاً ✍️', 'info'); return; }
+    tasks.unshift({ id: nextId++, title: inp.value.trim(), plot: 'مهمة جديدة', time: 'اليوم', type, done: false, overdue: false });
+    inp.value = '';
+    renderTasks();
+    showToast('تمت إضافة المهمة وجدولتها بنجاح 📅', 'success');
+  });
+  document.getElementById('taskInput').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('addTaskBtn').click(); });
+  renderTasks();
+
+  /* ---------- Finance ---------- */
+  let income = 12800, expense = 3400;
+  const txs = [
+    { type: 'income', cat: 'بيع محاصيل', amount: 8500, label: 'بيع محصول التين' },
+    { type: 'expense', cat: 'أجور عمال', amount: 2200, label: 'أجور عمال الحصاد' },
+    { type: 'income', cat: 'بيع محاصيل', amount: 4300, label: 'بيع محصول الزيتون' },
+    { type: 'expense', cat: 'أسمدة وتربة', amount: 1200, label: 'شراء أسمدة NPK' },
+  ];
+  const txList = document.getElementById('txList');
+  const chartLabels = ['يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  const chartIncome = [8.2, 12.1, 9.5, 14.0, 11.3, 12.8];
+  const chartExpense = [5.0, 6.2, 5.5, 7.1, 6.0, 3.4];
+
+  function fmt(n) { return n.toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+
+  function renderTxs() {
+    txList.innerHTML = '';
+    txs.slice(0, 6).forEach(tx => {
+      const el = document.createElement('div');
+      el.className = 'flex items-center gap-3 bg-gray-50 rounded-xl p-3.5 border border-gray-100';
+      el.innerHTML = `
+        <span class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tx.type === 'income' ? 'bg-emerald-50' : 'bg-rose-50'}">
+          <i data-lucide="${tx.type === 'income' ? 'arrow-down-left' : 'arrow-up-right'}" class="w-5 h-5 ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}"></i>
+        </span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold text-gray-800 truncate">${tx.label}</p>
+          <p class="text-[11px] text-gray-400 font-semibold">${tx.cat} · اليوم</p>
+        </div>
+        <span class="text-sm font-black shrink-0 ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}">
+          ${tx.type === 'income' ? '+' : '−'}${fmt(tx.amount)} ج.م
+        </span>`;
+      txList.appendChild(el);
+    });
+    lucide.createIcons();
+  }
+
+  function updateTotals() {
+    document.getElementById('totalIncome').textContent = fmt(income) + ' ج.م';
+    document.getElementById('totalExpense').textContent = fmt(expense) + ' ج.م';
+    const net = income - expense;
+    const netEl = document.getElementById('netProfit');
+    netEl.textContent = (net >= 0 ? '+' : '−') + fmt(Math.abs(net)) + ' ج.م';
+    netEl.className = 'text-3xl font-black mt-1 ' + (net >= 0 ? 'text-white' : 'text-rose-200');
+    chartIncome[5] = +(income / 1000).toFixed(1);
+    chartExpense[5] = +(expense / 1000).toFixed(1);
+    if (financeChart) { financeChart.update(); }
+  }
+
+  document.getElementById('addTxBtn').addEventListener('click', () => {
+    const type = document.getElementById('txType').value;
+    const cat = document.getElementById('txCat').value;
+    const amount = parseFloat(document.getElementById('txAmount').value);
+    if (!amount || amount <= 0) { showToast('أدخل مبلغاً صحيحاً أولاً 💰', 'info'); return; }
+    txs.unshift({ type, cat, amount, label: cat + (type === 'income' ? ' — إيراد اليوم' : ' — مصروف اليوم') });
+    if (type === 'income') income += amount; else expense += amount;
+    document.getElementById('txAmount').value = '';
+    renderTxs();
+    updateTotals();
+    showToast(type === 'income' ? 'تم تسجيل الإيراد ✅ ربحك يتزايد!' : 'تم تسجيل المصروف ✅', 'success');
+  });
+
+  function initFinanceChart() {
+    const ctx = document.getElementById('financeChart');
+    if (!ctx) return;
+    Chart.defaults.font.family = 'Cairo';
+    financeChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: chartLabels,
+        datasets: [
+          { label: 'الإيرادات', data: chartIncome, backgroundColor: '#10b981', borderRadius: 8, maxBarThickness: 26 },
+          { label: 'المصروفات', data: chartExpense, backgroundColor: '#fb7185', borderRadius: 8, maxBarThickness: 26 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { rtl: true, position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 18, font: { family: 'Cairo', weight: '700' } } },
+          tooltip: { rtl: true, backgroundColor: '#0f2e1d', padding: 12, cornerRadius: 12, titleFont: { family: 'Cairo' }, bodyFont: { family: 'Cairo' },
+            callbacks: { label: c => ' ' + c.dataset.label + ': ' + c.parsed.y.toLocaleString('en-US') + ' ألف ج.م' } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { family: 'Cairo', weight: '700' }, color: '#6b7280' } },
+          y: { grid: { color: '#f0f2f1' }, border: { display: false }, ticks: { font: { family: 'Cairo' }, color: '#9ca3af', callback: v => v + 'K' } }
+        }
+      }
+    });
+  }
+  renderTxs();
+  updateTotals();
+
+  /* ---------- Prices ---------- */
+  const crops = [
+    { name: 'طماطم', emoji: '🍅', unit: 'كجم', price: 12.50, change: 2.4 },
+    { name: 'بطاطس', emoji: '🥔', unit: 'كجم', price: 9.80, change: -1.1 },
+    { name: 'تين', emoji: '🌿', unit: 'كجم', price: 45.00, change: 3.8 },
+    { name: 'مانجو', emoji: '🥭', unit: 'كجم', price: 38.50, change: 1.2 },
+    { name: 'زيتون', emoji: '🫒', unit: 'كجم', price: 22.00, change: -0.8 },
+    { name: 'قمح', emoji: '🌾', unit: 'كجم', price: 11.20, change: 0.5 },
+    { name: 'فراولة', emoji: '🍓', unit: 'كجم', price: 30.00, change: 4.1 },
+    { name: 'ذرة', emoji: '🌽', unit: 'كجم', price: 8.60, change: -0.3 },
+  ];
+  const pricesList = document.getElementById('pricesList');
+
+  function renderPrices() {
+    pricesList.innerHTML = '';
+    crops.forEach(c => {
+      const up = c.change >= 0;
+      const row = document.createElement('div');
+      row.dataset.crop = c.name;
+      row.className = 'grid grid-cols-2 sm:grid-cols-4 gap-2 items-center px-6 py-4 border-t border-gray-100 hover:bg-emerald-50/40 transition';
+      row.innerHTML = `
+        <span class="flex items-center gap-3 font-extrabold text-gray-800 text-sm"><span class="text-xl">${c.emoji}</span>${c.name}</span>
+        <span class="text-xs text-gray-400 font-bold">لكل ${c.unit}</span>
+        <span class="text-lg font-black text-gray-900">${c.price.toFixed(2)} <span class="text-[10px] text-gray-400 font-bold">ج.م</span></span>
+        <span class="sm:text-left justify-self-start sm:justify-self-end inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full ${up ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}">
+          <i data-lucide="${up ? 'arrow-up' : 'arrow-down'}" class="w-3.5 h-3.5"></i>${Math.abs(c.change).toFixed(1)}%
+        </span>`;
+      pricesList.appendChild(row);
+    });
+    lucide.createIcons();
+    renderTicker();
+  }
+
+  setInterval(() => {
+    const c = crops[Math.floor(Math.random() * crops.length)];
+    const delta = (Math.random() * 1.4 - 0.6);
+    c.price = Math.max(1, c.price * (1 + delta / 100));
+    c.change = +(c.change * 0.6 + delta).toFixed(1);
+    const row = pricesList.querySelector(`[data-crop="${c.name}"]`);
+    if (row) {
+      const up = c.change >= 0;
+      row.querySelector('.text-lg').innerHTML = `${c.price.toFixed(2)} <span class="text-[10px] text-gray-400 font-bold">ج.م</span>`;
+      const badge = row.children[3];
+      badge.className = 'sm:text-left justify-self-start sm:justify-self-end inline-flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-full ' + (up ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500');
+      badge.innerHTML = `<i data-lucide="${up ? 'arrow-up' : 'arrow-down'}" class="w-3.5 h-3.5"></i>${Math.abs(c.change).toFixed(1)}%`;
+      lucide.createIcons();
+      row.classList.remove('flash-up', 'flash-down');
+      void row.offsetWidth;
+      row.classList.add(up ? 'flash-up' : 'flash-down');
+    }
+    renderTicker();
+  }, 4000);
+
+  /* ---------- Ticker ---------- */
+  const tickerTrack = document.getElementById('tickerTrack');
+  function renderTicker() {
+    const items = crops.concat(crops).map(c => {
+      const up = c.change >= 0;
+      return `<span class="inline-flex items-center gap-2 text-sm font-bold whitespace-nowrap">
+        <span>${c.emoji}</span><span class="text-emerald-100/80">${c.name}</span>
+        <span class="text-white">${c.price.toFixed(2)}</span>
+        <span class="${up ? 'text-lime-400' : 'text-rose-400'} text-xs">${up ? '▲' : '▼'} ${Math.abs(c.change).toFixed(1)}%</span>
+      </span>`;
+    }).join('');
+    tickerTrack.innerHTML = items;
+  }
+  renderPrices();
+
+  /* ---------- Diseases accordion ---------- */
+  const diseases = [
+    { icon: '🐛', color: 'bg-amber-50 text-amber-600', name: 'المن (Aphids)', host: 'يصيب: التين · المانجو · الخضروات',
+      symptoms: 'التفاف الأوراق الصغيرة واصفرارها، وجود إفرازات عسلية لزجة على الأوراق والسيقان، وانتشار النمل على النبات، مع تباطؤ في النمو وتشوه البراعم الحديثة.',
+      prevention: 'المراقبة الدورية للبراعم الحديثة أسبوعياً، تشجيع الأعداء الطبيعية مثل الدعسوقة وأسطوانية الأوراق، تجنب الإفراط في التسميد النيتروجيني، وزراعة نباتات طاردة كالثوم والبصل حول المزرعة.',
+      treatment: 'الرش بزيت النيم بنسبة 2% مرة كل أسبوع، أو استخدام مبيد حشري مناسب مثل المالاثيون بالجرعة الموصى بها، مع الرش في الصباح الباكر أو المغيب وتغطية أسفل الأوراق جيداً.' },
+    { icon: '🦟', color: 'bg-sky-50 text-sky-600', name: 'الذبابة البيضاء', host: 'يصيب: الخضروات · الحمضيات · القطن',
+      symptoms: 'حشرات بيضاء صغيرة تطير عند تحريك الأوراق، اصفرار الأوراق وذبولها تدريجياً، ظهور العفن الأسود نتيجة الإفرازات السكرية، ونقل الفيروسات المرضية للنبات.',
+      prevention: 'استخدام المصائد الصفراء اللاصقة بمعدل 10 مصائد للفدان، تغطية الشتلات بشبكات دقيقة، إزالة الأعشاب الضارة، وتنويع المحاصيل لكسر دورة الحياة.',
+      treatment: 'الرش بالصابون البوتاسي أو زيت النيم، وفي الإصابات الشديدة استخدام مبيدات جهازية بالتناوب بين المجموعات الكيميائية لتجنب المقاومة.' },
+    { icon: '🍂', color: 'bg-orange-50 text-orange-600', name: 'صدأ الوراق', host: 'يصيب: المانجو · الزيتون · الفاصولياء',
+      symptoms: 'بقع بارزة بلون صدري أو بني محمر على السطح السفلي للأوراق، اصفرار الأوراق وتساقطها المبكر، وضعف عام في الأشجار وانخفاض جودة المحصول.',
+      prevention: 'تحسين التهوية بالتقليم المنتظم، تجنب الرش الورقي في المساء، جمع وحرق الأوراق المتساقطة المصابة، والرش الوقائي بمبيدات نحاسية قبل موسم الأمطار.',
+      treatment: 'الرش بمبيدات جهازية متخصصة ضد الصدأ بمعدل مرة كل 15 يوماً، مع تحسين التسميد البوتاسي لزيادة مناعة الأشجار.' },
+    { icon: '💧', color: 'bg-rose-50 text-rose-600', name: 'تعفن الجذور', host: 'يصيب: التين · المانجو · معظم الفاكهة',
+      symptoms: 'اصفرار وذبول النبات رغم توفر الرطوبة، طراوة وطلاوة قاعدة الساق، رائحة عفن كريهة في التربة، وموت الأشجار تدريجياً خاصة في التربة سيئة الصرف.',
+      prevention: 'ضمان صرف جيد للأراضي وتجنب الإغراق بالري، عدم الري فوق الجذور مباشرة، تعقيم التربة قبل الزراعة، وتجنب إحداث جروح بالجذور أثناء الحراثة.',
+      treatment: 'تقليص الري فوراً وكشف الجذور المصابة وتهويتها، إزالة الأجزاء المتعفنة ومعالجتها بمبيد فطري مناسب، وإعادة الزراعة بعزق جيداً وت additions عضوية متحللة.' },
+    { icon: '🕸️', color: 'bg-violet-50 text-violet-600', name: 'البياض الدقيقي', host: 'يصيب: الخضروات · الفراولة · القمح',
+      symptoms: 'ظهور طبقة بيضاء مسحوقية على سطح الأوراق والسيقان كأنها مرشوشة بالدقيق، تشوه النمو الصغير، وتصفر الأوراق وتساقطها في الإصابات الشديدة.',
+      prevention: 'تهوية جيدة بين النباتات بمسافات زراعة مناسبة، اختيار أصناف مقاومة، تجنب التسميد النيتروجيني الزائد، والرش بالكبريت المبلل وقائياً في الطقس الجاف الدافئ.',
+      treatment: 'الرش بالكبريت المبلل أو مبيدات جهازية ضد البياض الدقيقي، مع تكرار الرش بعد 10 أيام، وتجنب الرش بالكبريت في درجات الحرارة المرتفعة فوق 32°.' },
+    { icon: '🦋', color: 'bg-emerald-50 text-emerald-600', name: 'دودة ورق القطن', host: 'يصيب: القطن · الذرة · الطماطم',
+      symptoms: 'ثقوب غير منتظمة في الأوراق والثمار والقصبات، وجود فضلات داكنة قرب مواقع الإصابة، دخول اليرقات في الثمار وتسبب تعفنها وسقوطها.',
+      prevention: 'استخدام مصائد الفيرومون لمتابعة طيران الفراشات بمعدل مصيدتين للفدان، الحرث الصيفي لإتلاف العذارى، وجمع اليرقات يدوياً في الإصابات المبكرة والمساحات الصغيرة.',
+      treatment: 'الرش بمبيدات حيوية مثل Bt (الباسيلوس ثورنجينesis) وهي آمنة على الأعداء الطبيعية، أو مبيدات كيميائية فعالة حسب توصية الإرشاد الزراعي عند تجاوز الحد الاقتصادي الحرج.' },
+  ];
+
+  const acc = document.getElementById('diseasesAcc');
+  diseases.forEach((d, i) => {
+    const item = document.createElement('div');
+    item.className = 'acc-item bg-white border border-gray-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all' + (i === 0 ? ' open' : '');
+    item.innerHTML = `
+      <button class="acc-head w-full flex items-center gap-4 p-5 sm:p-6 text-right">
+        <span class="w-14 h-14 rounded-2xl ${d.color} flex items-center justify-center text-2xl shrink-0">${d.icon}</span>
+        <span class="flex-1 min-w-0">
+          <span class="block text-lg font-extrabold text-gray-900">${d.name}</span>
+          <span class="block text-xs text-gray-400 font-semibold mt-0.5">${d.host}</span>
+        </span>
+        <span class="acc-chevron w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center shrink-0"><i data-lucide="chevron-down" class="w-5 h-5 text-gray-400"></i></span>
+      </button>
+      <div class="acc-body">
+        <div class="px-5 sm:px-6 pb-6 grid md:grid-cols-3 gap-4">
+          <div class="bg-red-50/60 border border-red-100 rounded-2xl p-4">
+            <p class="flex items-center gap-2 text-xs font-black text-red-600 mb-2"><i data-lucide="search" class="w-4 h-4"></i> الأعراض</p>
+            <p class="text-[13px] text-gray-600 leading-relaxed">${d.symptoms}</p>
+          </div>
+          <div class="bg-sky-50/60 border border-sky-100 rounded-2xl p-4">
+            <p class="flex items-center gap-2 text-xs font-black text-sky-600 mb-2"><i data-lucide="shield-check" class="w-4 h-4"></i> الوقاية</p>
+            <p class="text-[13px] text-gray-600 leading-relaxed">${d.prevention}</p>
+          </div>
+          <div class="bg-emerald-50/60 border border-emerald-100 rounded-2xl p-4">
+            <p class="flex items-center gap-2 text-xs font-black text-emerald-700 mb-2"><i data-lucide="stethoscope" class="w-4 h-4"></i> العلاج</p>
+            <p class="text-[13px] text-gray-600 leading-relaxed">${d.treatment}</p>
+          </div>
+        </div>
+      </div>`;
+    item.querySelector('.acc-head').addEventListener('click', () => {
+      const wasOpen = item.classList.contains('open');
+      document.querySelectorAll('.acc-item').forEach(a => a.classList.remove('open'));
+      if (!wasOpen) item.classList.add('open');
+    });
+    acc.appendChild(item);
+  });
+  lucide.createIcons();
+
+  /* ---------- Tips carousel ---------- */
+  const tips = [
+    { icon: '💧', text: 'أفضل وقت للري هو الصباح الباكر قبل شروق الشمس أو بعد الغروب — الري وقت الظهيرة يفقد حتى 40% من الماء بالتبخر ويصيب النبات بصدمة حرارية.' },
+    { icon: '🌱', text: 'التدوير الزراعي (تغيير المحصول كل موسم) يُجدد خصوبة التربة طبيعياً ويكسر دورة الآفات — وزراعة البقوليات تضيف نيتروجيناً مجانياً لأرضك.' },
+    { icon: '✂️', text: 'قص أدوات التقليم وتعقيمها بالكحول بين شجرة وأخرى يمنع انتقال الفيروسات والأمراض — أداة واحدة غير نظيفة قد تصيب مزرعتك كلها.' },
+    { icon: '🌾', text: 'لا تحصد محصولك في يوم ضبابي أو بعد الري مباشرة — الرطوبة العالية تسرّع تعفن المحصول بعد الحصاد وتخفض سعره في السوق.' },
+    { icon: '🍂', text: 'أوراق الأشجار المتساقطة كنز مجاني — حولها إلى كومبوست وأضفها للتربة قبل الموسم الجديد لتوفر حتى 30% من تكلفة الأسمدة.' },
+    { icon: '🍅', text: 'راقب أسعار السوق قبل الحصاد ب أسبوعين — أحياناً تأجيل الحصاد 3-5 أيام فقط يرفع ربحك بنسبة كبيرة عند تحسن السعر.' },
+  ];
+  let tipIdx = 0, tipTimer;
+  const tipText = document.getElementById('tipText');
+  const tipIcon = document.getElementById('tipIcon');
+  const tipDots = document.getElementById('tipDots');
+  tips.forEach((_, i) => {
+    const dot = document.createElement('button');
+    dot.className = 'h-2 rounded-full bg-gray-200 transition-all duration-300';
+    dot.addEventListener('click', () => { tipIdx = i; showTip(); resetTipTimer(); });
+    tipDots.appendChild(dot);
+  });
+  function showTip() {
+    tipText.style.opacity = 0; tipIcon.style.opacity = 0;
+    setTimeout(() => {
+      tipText.textContent = tips[tipIdx].text;
+      tipIcon.textContent = tips[tipIdx].icon;
+      tipText.style.transition = tipIcon.style.transition = 'opacity .4s ease';
+      tipText.style.opacity = 1; tipIcon.style.opacity = 1;
+      [...tipDots.children].forEach((d, i) => {
+        d.classList.toggle('dot-active', i === tipIdx);
+        d.classList.toggle('bg-gray-200', i !== tipIdx);
+        d.style.width = i === tipIdx ? '24px' : '8px';
+      });
+    }, 200);
+  }
+  function resetTipTimer() {
+    clearInterval(tipTimer);
+    tipTimer = setInterval(() => { tipIdx = (tipIdx + 1) % tips.length; showTip(); }, 6000);
+  }
+  showTip(); resetTipTimer();
+
+  /* ---------- Welcome toast ---------- */
+  setTimeout(() => showToast('أهلاً بك في مزرعتي 🌱 جرّب التجربة الحية بالأسفل!', 'success'), 1800);
+});
+</script>
+</body>
+</html>
